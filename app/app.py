@@ -27,11 +27,10 @@ from scipy import integrate
 import plotly.graph_objects as go
 from get_data import get_johns_hopkins
 from  build_features  import *
-from  process_data import *
+from  preprocessing import *
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-#os.chdir("../")
 print(os.getcwd())
 
 get_johns_hopkins()
@@ -45,8 +44,6 @@ print('the test slope is: '+str(result))
 pd_JH_data=pd.read_csv('../data/processed/COVID_relational_confirmed.csv',sep=';',parse_dates=[0])
 pd_JH_data=pd_JH_data.sort_values('date',ascending=True).copy()
 
-#test_structure=pd_JH_data[((pd_JH_data['country']=='US')|
-#                  (pd_JH_data['country']=='Germany'))]
 
 pd_result_larg=calc_filtered_data(pd_JH_data)
 pd_result_larg=calc_doubling_rate(pd_result_larg)
@@ -59,10 +56,7 @@ pd_result_larg.to_csv('../data/processed/COVID_final_set.csv',sep=';',index=Fals
 print(pd_result_larg[pd_result_larg['country']=='Germany'].tail())
 
 
-
-###SIR
-
-proces_SIR_data()
+proces_SIR()
 
 df_analyse=pd.read_csv('../data/processed/COVID_small_flat_table.csv',sep=';')  
 df_analyse.sort_values('date',ascending=True).head()
@@ -125,30 +119,25 @@ print("Optimal parameters: beta =", popt[0], " and gamma = ", popt[1])
 fitted=fit_odeint(t, *popt)
 
 
-
-
-#visualize
-
-
 df_input_large=pd.read_csv('../data/processed/COVID_final_set.csv',sep=';')
 fig = go.Figure()
 
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(external_stylesheets=[dbc.themes.DARKLY])
 server=app.server
 app.layout = html.Div([
 
     dcc.Markdown('''
-    # **ENTERPRISE DATA SCIENCE - COVID19 DATA**
+    # **EDS - COVID19 DATA Prototyping**
     '''),
 
     dcc.Markdown('''
     ---
     '''),
     dcc.Markdown('''
-    ## **Part 1 : All Countries Visualization**
+    ## ** Visualization by countries **
     '''),
     dcc.Markdown('''
-    ### Select one or more countries
+    ### Select the desired countries
     '''),
 
 
@@ -160,7 +149,7 @@ app.layout = html.Div([
     ),
 
     dcc.Markdown('''
-        ### Select Timeline of confirmed COVID-19 cases or the approximated doubling time
+        ###  Doubling time or confirmed cases of the countries selected
         '''),
 
     dcc.Dropdown(
@@ -176,17 +165,15 @@ app.layout = html.Div([
     ),
 
     dcc.Graph(figure=fig, id='main_window_slope'),
-        dcc.Markdown('''
-    ---
+       
+    dcc.Markdown('''
+    ## ** SIR Modelling of COVID Data**
     '''),
     dcc.Markdown('''
-    ## **Part 2 : SIR Modelling**
-    '''),
-    dcc.Markdown('''
-    ### Select any country
+    ### Select a country
     '''),
     dcc.Dropdown(
-                id='country_SIR',
+                id='country',
                 options=[{'label': 'Germany', 'value': 'Germany'},
                        {'label': 'US', 'value': 'US'},
                        {'label': 'Italy', 'value': 'Italy'},
@@ -259,17 +246,16 @@ def update_figure(country_list,show_doubling):
 
 @app.callback(
     Output('sir', 'figure'),
-    Input('country_SIR', 'value'))
-def update_graph_SIR(country_SIR):
-    print(country_SIR+'......')
+    Input('country', 'value'))
+def updated_SIR_graph(country):
 
     global I0,S0,N0,I0,R0,ydata,t,popt
 
-    I0=df_analyse[country_SIR][35]
+    I0=df_analyse[country][35]
     S0=N0-I0
     R0=0
 
-    ydata = np.array(df_analyse[country_SIR][35:])
+    ydata = np.array(df_analyse[country][35:])
     t=np.arange(len(ydata))
 
     I0=ydata[0]
@@ -295,7 +281,7 @@ def update_graph_SIR(country_SIR):
 
     
     fig2=go.Figure()
-    title="Fit of SIR model for "+country_SIR+"  cases"
+    title="Fit of SIR model for "+country+"  cases"
     fig2.add_trace(go.Scatter(x=t, y=ydata, name='Y data', mode='lines'))
     fig2.add_trace(go.Scatter(x=t, y=fitted, name='Fitted data', mode='lines'))
     fig2.update_yaxes(type="log")
